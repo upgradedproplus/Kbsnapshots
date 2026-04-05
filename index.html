@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,7 +34,6 @@
             box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
         }
         
-        /* Global anti-download / anti-screenshot measures */
         .protected-content * {
             -webkit-user-drag: none;
             user-select: none;
@@ -249,6 +247,548 @@
          class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
         <div onclick="event.stopImmediatePropagation()" class="modal bg-zinc-900 rounded-3xl max-w-lg w-full">
             <div class="px-8 py-6 border-b border-zinc-800 flex justify-between items-center">
+                <h3 class="text-2xl font-semibold">Your Cart</h3>
+                <button onclick="hideCart()" class="text-4xl">×</button>
+            </div>
+            
+            <div id="cart-items" class="p-8 max-h-96 overflow-auto">
+                <!-- JS populated -->
+            </div>
+            
+            <div class="p-8 border-t border-zinc-800">
+                <div class="flex justify-between text-xl font-medium mb-8">
+                    <span>Total</span>
+                    <span id="cart-total" class="font-mono"></span>
+                </div>
+                
+                <button onclick="checkout()" 
+                        class="w-full bg-emerald-500 text-black py-6 rounded-3xl text-xl font-semibold">
+                    Secure Checkout (Demo Mode)
+                </button>
+                <p class="text-center text-xs text-zinc-500 mt-4">Test mode • No real payment taken</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIBRARY MODAL (Purchased photos) -->
+    <div id="library-modal" onclick="if(event.target === this) hideLibrary()" 
+         class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
+        <div onclick="event.stopImmediatePropagation()" class="modal bg-zinc-900 rounded-3xl max-w-4xl w-full max-h-[95vh]">
+            <div class="px-8 py-6 border-b flex justify-between items-center">
+                <h3 class="text-2xl font-semibold">My Secure Library</h3>
+                <button onclick="hideLibrary()" class="text-4xl">×</button>
+            </div>
+            
+            <div id="library-grid" class="p-8 grid grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- JS populated protected thumbnails -->
+            </div>
+        </div>
+    </div>
+
+    <!-- SELLER DASHBOARD MODAL -->
+    <div id="seller-modal" onclick="if(event.target === this) hideSellerDashboard()" 
+         class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
+        <div onclick="event.stopImmediatePropagation()" class="modal bg-zinc-900 rounded-3xl max-w-2xl w-full">
+            <div class="px-8 py-6 border-b flex justify-between">
+                <h3 class="text-2xl font-semibold">Seller Dashboard • Add New Photo</h3>
+                <button onclick="hideSellerDashboard()" class="text-4xl">×</button>
+            </div>
+            
+            <div class="p-8 space-y-6">
+                <div>
+                    <label class="block text-sm mb-2">Photo Title</label>
+                    <input id="new-title" type="text" 
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-400"
+                           placeholder="Sunset over the Alps">
+                </div>
+                
+                <div>
+                    <label class="block text-sm mb-2">Price in GBP</label>
+                    <input id="new-price" type="number" step="0.01" value="9.99"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-400">
+                </div>
+                
+                <div>
+                    <label class="block text-sm mb-2">Direct Image URL (host your photo publicly on GitHub, Postimages.org, or ImgBB)</label>
+                    <input id="new-url" type="url" 
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-400"
+                           placeholder="https://raw.githubusercontent.com/.../yourphoto.jpg">
+                </div>
+                
+                <div>
+                    <label class="block text-sm mb-2">Description</label>
+                    <textarea id="new-desc" rows="3"
+                              class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-400"></textarea>
+                </div>
+                
+                <button onclick="addNewPhoto()" 
+                        class="w-full bg-emerald-500 text-black py-5 rounded-3xl font-semibold text-lg">
+                    Add to Gallery (Protected)
+                </button>
+                
+                <p class="text-xs text-zinc-500 text-center">
+                    Your photo will be added instantly and rendered in canvas for all buyers.
+                    <br>Replace the URL anytime with a new hosted image.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUCCESS TOAST -->
+    <div id="toast" onclick="this.classList.add('hidden')" 
+         class="hidden fixed bottom-8 right-8 bg-emerald-500 text-black px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-x-3">
+        <span id="toast-text" class="font-medium"></span>
+    </div>
+
+    <script>
+        // Tailwind initialization
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        configUser: userConfig,
+                        theme: {
+                            extend: {},
+                        }
+                    }
+                },
+                theme: {
+                    extend: {},
+                }
+            }
+        }
+        
+        // Sample photos – now priced in GBP (£)
+        let photos = [
+            {
+                id: 1,
+                title: "Beddgelert",
+                price: 14.99,
+                url: "https://i.postimg.cc/NFTP96Tq/20251010-090547.jpg",
+                desc: "Dramatic mountain veiw over looking Beddgelert"
+            },
+            {
+                id: 2,
+                title: "energetic london",
+                price: 19.99,
+                url: "https://i.postimg.cc/fLKctffQ/image-31.jpg",
+                desc: "wonderful veiw of everyday london. Perfect for prints."
+            },
+            {
+                id: 3,
+                title: "The Reindeer of Glenmore",
+                price: 19.99,
+                url: "https://i.postimg.cc/LXxYLzNQ/20260317-120921.jpg",
+                desc: "The wild reindeer of Cairngorm"
+            },
+            {
+                id: 4,
+                title: "Crystal Clear Lake",
+                price: 12.99,
+                url: "https://picsum.photos/id/201/1200/800",
+                desc: "Mirror-like alpine lake reflecting snow-capped mountains."
+            },
+            {
+                id: 5,
+                title: "Desert Dunes at Dawn",
+                price: 8.99,
+                url: "https://picsum.photos/id/1005/1200/800",
+                desc: "Endless sand dunes glowing in the first light of day."
+            },
+            {
+                id: 6,
+                title: "Cherry Blossom Canopy",
+                price: 15.99,
+                url: "https://picsum.photos/id/133/1200/800",
+                desc: "Pink blossoms exploding across Tokyo streets in spring."
+            }
+        ]
+        
+        let cart = []
+        let purchased = JSON.parse(localStorage.getItem('purchased')) || []
+        
+        // Load saved photos from localStorage
+        function loadPhotos() {
+            const saved = localStorage.getItem('shieldPhotos')
+            if (saved) {
+                photos = JSON.parse(saved)
+            }
+        }
+        
+        function savePhotos() {
+            localStorage.setItem('shieldPhotos', JSON.stringify(photos))
+        }
+        
+        // Render protected image on canvas with heavy watermarking
+        function renderProtectedImage(url, canvasId, buyerName = "Purchased by You") {
+            const canvas = document.getElementById(canvasId)
+            if (!canvas) return
+            const ctx = canvas.getContext('2d')
+            
+            const img = new Image()
+            img.crossOrigin = "anonymous"
+            
+            img.onload = function () {
+                canvas.width = img.width
+                canvas.height = img.height
+                
+                ctx.drawImage(img, 0, 0)
+                
+                // Watermarks
+                ctx.fillStyle = 'rgba(0, 255, 157, 0.25)'
+                ctx.font = 'bold 48px Inter'
+                
+                ctx.fillText(buyerName, 80, canvas.height - 80)
+                
+                ctx.save()
+                ctx.rotate(-Math.PI / 6)
+                ctx.fillText('© ShieldPhotos • ' + new Date().toLocaleDateString(), -120, canvas.height / 1.8)
+                ctx.fillText('NO SCREENSHOTS • NO DOWNLOADS', -180, canvas.height / 1.3)
+                ctx.restore()
+                
+                ctx.save()
+                ctx.rotate(Math.PI / 6)
+                ctx.fillText('© ShieldPhotos', canvas.width / 3, -80)
+                ctx.restore()
+                
+                ctx.font = 'bold 22px Inter'
+                ctx.fillStyle = 'rgba(255,255,255,0.15)'
+                for (let x = 60; x < canvas.width; x += 220) {
+                    for (let y = 80; y < canvas.height; y += 140) {
+                        ctx.fillText('🔒', x, y)
+                    }
+                }
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+            
+            img.src = url
+        }
+        
+        // Render the main gallery (GBP prices)
+        function renderGallery() {
+            const container = document.getElementById('photo-grid')
+            container.innerHTML = ''
+            
+            photos.forEach(photo => {
+                const isPurchased = purchased.includes(photo.id)
+                
+                const cardHTML = `
+                <div onclick="showPhotoModal(${photo.id})" 
+                     class="group bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800 hover:border-emerald-400 transition-all cursor-pointer">
+                    <div class="relative">
+                        <img src="\( {photo.url}" alt=" \){photo.title}" 
+                             class="w-full aspect-video object-cover no-right-click">
+                        ${isPurchased ? 
+                        `<div class="absolute top-3 left-3 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-2xl flex items-center">✓ UNLOCKED</div>` : ''}
+                        <div class="absolute top-3 right-3 bg-black/70 text-white text-xs font-mono px-2.5 py-px rounded-lg">
+                            £${photo.price}
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h4 class="font-medium text-lg group-hover:text-emerald-400 transition-colors">${photo.title}</h4>
+                        <p class="text-sm text-zinc-400 line-clamp-2">${photo.desc}</p>
+                    </div>
+                </div>`
+                
+                container.innerHTML += cardHTML
+            })
+            
+            if (photos.length === 0) {
+                container.innerHTML = `<p class="col-span-full text-center py-12 text-zinc-500">No photos yet. Add some in the Seller Dashboard!</p>`
+            }
+        }
+        
+        // Show photo in modal with protected canvas (GBP)
+        let currentPhoto = null
+        
+        function showPhotoModal(id) {
+            currentPhoto = photos.find(p => p.id === id)
+            if (!currentPhoto) return
+            
+            document.getElementById('modal-title').textContent = currentPhoto.title
+            document.getElementById('modal-price').innerHTML = `£${currentPhoto.price} <span class="text-zinc-400 text-base">one-time</span>`
+            document.getElementById('modal-price-button').innerHTML = `£${currentPhoto.price}`
+            document.getElementById('modal-description').innerHTML = `<p>${currentPhoto.desc}</p><p class="text-emerald-400 mt-6 text-sm">This preview is fully protected. After purchase it will be permanently available in your Library.</p>`
+            
+            renderProtectedImage(currentPhoto.url, 'modal-canvas', 'Preview Only - Buy to unlock')
+            
+            document.getElementById('photo-modal').classList.remove('hidden')
+            document.getElementById('photo-modal').classList.add('flex')
+        }
+        
+        function hideModal() {
+            const modal = document.getElementById('photo-modal')
+            modal.classList.add('hidden')
+            modal.classList.remove('flex')
+            currentPhoto = null
+        }
+        
+        // Cart functions
+        function addToCart(photo) {
+            if (cart.find(item => item.id === photo.id)) return
+            cart.push(photo)
+            updateCartCount()
+            showToast(`${photo.title} added to cart`)
+        }
+        
+        function addToCartFromModal() {
+            if (currentPhoto) {
+                addToCart(currentPhoto)
+                hideModal()
+            }
+        }
+        
+        function updateCartCount() {
+            document.getElementById('cart-count').textContent = cart.length
+        }
+        
+        function showCart() {
+            const container = document.getElementById('cart-items')
+            container.innerHTML = ''
+            
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-zinc-400 text-center py-12">Your cart is empty</p>`
+                document.getElementById('cart-total').innerHTML = `£0.00`
+                document.getElementById('cart-modal').classList.remove('hidden')
+                document.getElementById('cart-modal').classList.add('flex')
+                return
+            }
+            
+            let total = 0
+            
+            cart.forEach((item, index) => {
+                total += item.price
+                container.innerHTML += `
+                <div class="flex gap-4 mb-6 last:mb-0">
+                    <canvas width="80" height="60" class="rounded-2xl flex-shrink-0" id="cart-canvas-${item.id}"></canvas>
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <p class="font-medium">${item.title}</p>
+                            <p class="font-mono">£${item.price}</p>
+                        </div>
+                        <button onclick="removeFromCart(${index});event.stopImmediatePropagation()" 
+                                class="text-xs text-red-400 hover:text-red-300 mt-2">Remove</button>
+                    </div>
+                </div>`
+            })
+            
+            document.getElementById('cart-total').innerHTML = `<span class="font-mono">£${total.toFixed(2)}</span>`
+            
+            setTimeout(() => {
+                cart.forEach(item => {
+                    const c = document.getElementById(`cart-canvas-${item.id}`)
+                    if (c) renderProtectedImage(item.url, `cart-canvas-${item.id}`, 'Cart')
+                })
+            }, 100)
+            
+            document.getElementById('cart-modal').classList.remove('hidden')
+            document.getElementById('cart-modal').classList.add('flex')
+        }
+        
+        function hideCart() {
+            const modal = document.getElementById('cart-modal')
+            modal.classList.add('hidden')
+            modal.classList.remove('flex')
+        }
+        
+        function removeFromCart(index) {
+            cart.splice(index, 1)
+            updateCartCount()
+            showCart()
+        }
+        
+        function checkout() {
+            hideCart()
+            
+            cart.forEach(item => {
+                if (!purchased.includes(item.id)) {
+                    purchased.push(item.id)
+                }
+            })
+            
+            localStorage.setItem('purchased', JSON.stringify(purchased))
+            
+            showToast(`🎉 Purchase successful! ${cart.length} photos added to your Library`)
+            cart = []
+            updateCartCount()
+            
+            setTimeout(() => {
+                showLibrary()
+            }, 800)
+        }
+        
+        // Library
+        function showLibrary() {
+            const container = document.getElementById('library-grid')
+            container.innerHTML = ''
+            
+            const owned = photos.filter(p => purchased.includes(p.id))
+            
+            if (owned.length === 0) {
+                container.innerHTML = `
+                <div class="col-span-full text-center py-16">
+                    <p class="text-6xl mb-6">📚</p>
+                    <p class="text-zinc-400">No purchased photos yet</p>
+                    <button onclick="hideLibrary();navigateToSection('gallery')" 
+                            class="mt-6 text-emerald-400 underline">Browse gallery</button>
+                </div>`
+                document.getElementById('library-modal').classList.remove('hidden')
+                document.getElementById('library-modal').classList.add('flex')
+                return
+            }
+            
+            owned.forEach(photo => {
+                const div = document.createElement('div')
+                div.className = "bg-zinc-950 rounded-3xl overflow-hidden cursor-pointer border border-emerald-400/30"
+                div.innerHTML = `
+                <div class="relative p-2">
+                    <canvas id="library-canvas-${photo.id}" width="400" height="280" class="w-full rounded-2xl"></canvas>
+                    <div class="absolute bottom-4 left-4 bg-emerald-500 text-black text-xs px-4 py-1 rounded-3xl font-medium">UNLOCKED</div>
+                </div>
+                <div class="px-5 pb-5">
+                    <p class="font-medium">${photo.title}</p>
+                </div>`
+                container.appendChild(div)
+                
+                setTimeout(() => {
+                    renderProtectedImage(photo.url, `library-canvas-${photo.id}`, 'Your Library')
+                }, 50)
+                
+                div.onclick = () => {
+                    hideLibrary()
+                    currentPhoto = photo
+                    document.getElementById('modal-title').textContent = photo.title + ' • Library'
+                    document.getElementById('modal-price').innerHTML = `✅ Owned`
+                    document.getElementById('modal-description').innerHTML = `<p class="text-emerald-400">You own this photo forever. Protected viewer below.</p>`
+                    renderProtectedImage(photo.url, 'modal-canvas', 'Your Permanent Copy')
+                    document.getElementById('photo-modal').classList.remove('hidden')
+                    document.getElementById('photo-modal').classList.add('flex')
+                }
+            })
+            
+            document.getElementById('library-modal').classList.remove('hidden')
+            document.getElementById('library-modal').classList.add('flex')
+        }
+        
+        function hideLibrary() {
+            const modal = document.getElementById('library-modal')
+            modal.classList.add('hidden')
+            modal.classList.remove('flex')
+        }
+        
+        // Seller dashboard
+        function showSellerDashboard() {
+            document.getElementById('seller-modal').classList.remove('hidden')
+            document.getElementById('seller-modal').classList.add('flex')
+        }
+        
+        function hideSellerDashboard() {
+            const modal = document.getElementById('seller-modal')
+            modal.classList.add('hidden')
+            modal.classList.remove('flex')
+        }
+        
+        function addNewPhoto() {
+            const title = document.getElementById('new-title').value.trim() || 'Untitled Photo'
+            const price = parseFloat(document.getElementById('new-price').value) || 9.99
+            const url = document.getElementById('new-url').value.trim()
+            const desc = document.getElementById('new-desc').value.trim() || 'Beautiful protected photo'
+            
+            if (!url) {
+                alert('Please provide a direct image URL (GitHub raw, Postimages.org, or ImgBB)')
+                return
+            }
+            
+            const newPhoto = {
+                id: Date.now(),
+                title: title,
+                price: price,
+                url: url,
+                desc: desc
+            }
+            
+            photos.unshift(newPhoto)
+            savePhotos()
+            renderGallery()
+            hideSellerDashboard()
+            
+            showToast('✅ New photo added to gallery and fully protected!')
+            
+            document.getElementById('new-title').value = ''
+            document.getElementById('new-url').value = ''
+            document.getElementById('new-desc').value = ''
+        }
+        
+        function buyNow() {
+            if (!currentPhoto) return
+            hideModal()
+            
+            if (!purchased.includes(currentPhoto.id)) {
+                purchased.push(currentPhoto.id)
+                localStorage.setItem('purchased', JSON.stringify(purchased))
+            }
+            
+            showToast(`✅ ${currentPhoto.title} purchased and added to Library!`)
+            setTimeout(() => showLibrary(), 600)
+        }
+        
+        // Toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast')
+            document.getElementById('toast-text').innerHTML = message
+            toast.classList.remove('hidden')
+            toast.style.display = 'flex'
+            
+            setTimeout(() => {
+                toast.classList.add('hidden')
+                toast.style.display = 'none'
+            }, 3200)
+        }
+        
+        function navigateToSection(section) {
+            document.getElementById(section).scrollIntoView({ behavior: 'smooth' })
+        }
+        
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu')
+            menu.classList.toggle('hidden')
+        }
+        
+        // Hero canvas demo
+        function renderHeroCanvas() {
+            renderProtectedImage('https://picsum.photos/id/1015/1200/800', 'hero-canvas', 'Hero Preview')
+        }
+        
+        // Main app bootstrap
+        function initializeApp() {
+            loadPhotos()
+            renderGallery()
+            updateCartCount()
+            renderHeroCanvas()
+            
+            console.log('%c✅ ShieldPhotos ready! All prices now in GBP (£).', 'color:#00ff9d; font-family:monospace')
+            
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.closest('.protected-content') || e.target.tagName === 'CANVAS') {
+                    e.preventDefault()
+                    return false
+                }
+            })
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'PrintScreen') {
+                    showToast('🚫 Screenshot attempt blocked')
+                    e.preventDefault()
+                }
+            })
+        }
+        
+        window.onload = initializeApp
+    </script>
+</body>
+</html>            <div class="px-8 py-6 border-b border-zinc-800 flex justify-between items-center">
                 <h3 class="text-2xl font-semibold">Your Cart</h3>
                 <button onclick="hideCart()" class="text-4xl">×</button>
             </div>
